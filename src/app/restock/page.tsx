@@ -1,0 +1,163 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { getProducts, getConfigLists } from '@/api/inventory';
+import { getRestocks, addRestock } from '@/api/sales';
+import { addActivityLog } from '@/api/quotes';
+import { Product, Restock } from '@/lib/types';
+import { useAuth } from '@/components/AuthProvider';
+
+export default function RestockPage() {
+    const { user } = useAuth();
+    const [products, setProducts] = useState<Product[]>([]);
+    const [restocks, setRestocks] = useState<Restock[]>([]);
+    const [cities, setCities] = useState<string[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // Form State
+    const [productName, setProductName] = useState('');
+    const [qty, setQty] = useState(10);
+    const [city, setCity] = useState('');
+    const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const [supplier, setSupplier] = useState('');
+    const [notes, setNotes] = useState('');
+    const [saving, setSaving] = useState(false);
+
+    const loadData = async () => {
+        try {
+            const [p, r, configLists] = await Promise.all([getProducts(), getRestocks(), getConfigLists()]);
+            setProducts(p);
+            setRestocks(r);
+            setCities(configLists.filter(c => c.type === 'city').map(c => c.value));
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { loadData(); }, []);
+
+    const handleAdd = async () => {
+        if (!productName || qty < 1) {
+            alert('Please select a product and valid quantity.');
+            return;
+        }
+        setSaving(true);
+        try {
+            await addRestock({ product_name: productName, qty, city, date, supplier, notes });
+
+            if (user) {
+                await addActivityLog({
+                    type: 'add',
+                    user_name: user.name,
+                    role: user.role,
+                    message: `Restocked <strong>${productName}</strong> +${qty} units${city ? ' → ' + city : ''}`,
+                });
+            }
+            setQty(10);
+            setCity('');
+            setSupplier('');
+            setNotes('');
+            await loadData();
+        } catch (e) {
+            console.error(e);
+            alert('Failed to add restock.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) return <div className="page active"><div className="ph"><div><h1>Restock</h1></div></div><div style={{ color: 'var(--text3)', padding: '32px', textAlign: 'center' }}>Loading...</div></div>;
+
+    return (
+        <div className="page active" id="page-restock">
+            <div className="ph">
+                <div>
+                    <h1>Restock</h1>
+                    <p>Add stock to existing products</p>
+                </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '18px', alignItems: 'start' }}>
+
+                {/* ADD STOCK FORM */}
+                <div className="card">
+                    <div className="card-title">Add Stock</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div className="fg">
+                            <label>Product</label>
+                            <select value={productName} onChange={e => setProductName(e.target.value)}>
+                                <option value="">Select product…</option>
+                                {products.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="fg">
+                            <label>Units to Add</label>
+                            <input type="number" min="1" value={qty} onChange={e => setQty(parseInt(e.target.value) || 1)} />
+                        </div>
+                        <div className="fg">
+                            <label>Destination City</label>
+                            <select value={city} onChange={e => setCity(e.target.value)}>
+                                <option value="">Select city…</option>
+                                {cities.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
+                        <div className="fg">
+                            <label>Date</label>
+                            <input type="date" value={date} onChange={e => setDate(e.target.value)} />
+                        </div>
+                        <div className="fg">
+                            <label>Supplier / Source</label>
+                            <input type="text" placeholder="Supplier name…" value={supplier} onChange={e => setSupplier(e.target.value)} />
+                        </div>
+                        <div className="fg">
+                            <label>Notes</label>
+                            <input type="text" placeholder="Batch, lot, etc." value={notes} onChange={e => setNotes(e.target.value)} />
+                        </div>
+                    </div>
+                    <div className="btn-row">
+                        <button className="btn btn-primary" onClick={handleAdd} disabled={saving}>
+                            {saving ? 'Adding...' : 'Add Stock'}
+                        </button>
+                    </div>
+                </div>
+
+                {/* RESTOCK HISTORY */}
+                <div className="card">
+                    <div className="card-title">Restock History</div>
+                    <div className="tbl-wrap">
+                        <table id="rs-tbl">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Product</th>
+                                    <th>City</th>
+                                    <th>Units Added</th>
+                                    <th>Supplier</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {restocks.map(r => (
+                                    <tr key={r.id}>
+                                        <td className="mono">{r.date}</td>
+                                        <td style={{ fontWeight: 500 }}>{r.product_name}</td>
+                                        <td><span className="badge b-blue" style={{ fontSize: '11px' }}>{r.city || '—'}</span></td>
+                                        <td style={{ color: 'var(--green)', fontFamily: "'DM Mono', 'Fira Code', 'Courier New', monospace", fontWeight: 700 }}>+{r.qty}</td>
+                                        <td className="muted">{r.supplier || '—'}</td>
+                                        <td className="muted">{r.notes || '—'}</td>
+                                    </tr>
+                                ))}
+                                {restocks.length === 0 && (
+                                    <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text3)', padding: '28px' }}>No restock entries yet</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    );
+}
