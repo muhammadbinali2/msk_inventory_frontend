@@ -24,8 +24,8 @@ interface ProductBreakdown {
     revenue: number;
 }
 
-interface CityData {
-    city: string;
+interface BranchData {
+    branch: string;
     units: number;
     revenue: number;
     channels: string[];
@@ -53,11 +53,11 @@ const StockBadge = ({ cur, reorder }: { cur: number; reorder: number }) => {
 // ── Component ──────────────────────────────────────────────────────────────
 export default function StockLevels() {
     const [stockRows, setStockRows] = useState<StockRow[]>([]);
-    const [cityData, setCityData] = useState<CityData[]>([]);
+    const [branchData, setBranchData] = useState<BranchData[]>([]);
     const [sales, setSales] = useState<Sale[]>([]);
     const [restocks, setRestocks] = useState<Restock[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'overview' | 'city'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'branch'>('overview');
 
     useEffect(() => {
         async function loadData() {
@@ -89,8 +89,8 @@ export default function StockLevels() {
 
                 setStockRows(rows);
 
-                // ── City breakdown ─────────────────────────────────────
-                buildCityData(salesData, restockData);
+                // ── Branch breakdown ───────────────────────────────────
+                buildBranchData(salesData, restockData);
             } catch (e) {
                 console.error(e);
             } finally {
@@ -100,18 +100,18 @@ export default function StockLevels() {
         loadData();
     }, []);
 
-    function buildCityData(salesData: Sale[], restockData: Restock[]) {
-        const cities = Array.from(new Set(salesData.map(s => s.city).filter(Boolean))) as string[];
+    function buildBranchData(salesData: Sale[], restockData: Restock[]) {
+        const branchNames = Array.from(new Set(salesData.map(s => s.city).filter(Boolean))) as string[];
         const totalUnits = salesData.reduce((a, s) => a + s.qty, 0) || 1;
 
-        const data: CityData[] = cities.map(city => {
-            const citySales = salesData.filter(s => s.city === city);
-            const units = citySales.reduce((a, s) => a + s.qty, 0);
-            const revenue = citySales.filter(s => s.status !== 'Free').reduce((a, s) => a + s.final_price, 0);
-            const channels = Array.from(new Set(citySales.map(s => s.channel).filter(Boolean))) as string[];
+        const data: BranchData[] = branchNames.map(name => {
+            const branchSales = salesData.filter(s => s.city === name);
+            const units = branchSales.reduce((a, s) => a + s.qty, 0);
+            const revenue = branchSales.filter(s => s.status !== 'Free').reduce((a, s) => a + s.final_price, 0);
+            const channels = Array.from(new Set(branchSales.map(s => s.channel).filter(Boolean))) as string[];
 
             const prodQtys: Record<string, number> = {};
-            citySales.forEach(s => { prodQtys[s.product_name] = (prodQtys[s.product_name] || 0) + s.qty; });
+            branchSales.forEach(s => { prodQtys[s.product_name] = (prodQtys[s.product_name] || 0) + s.qty; });
 
             const topProdEntry = Object.entries(prodQtys).sort((a, b) => b[1] - a[1])[0] as [string, number] | undefined;
             const topProd: [string, number] | null = topProdEntry ? topProdEntry : null;
@@ -121,14 +121,14 @@ export default function StockLevels() {
                 .map(([prod, qty]) => ({
                     product: prod,
                     qty,
-                    revenue: citySales.filter(s => s.product_name === prod && s.status !== 'Free').reduce((a, s) => a + s.final_price, 0)
+                    revenue: branchSales.filter(s => s.product_name === prod && s.status !== 'Free').reduce((a, s) => a + s.final_price, 0)
                 }));
 
-            const restocked = restockData.filter(r => r.city === city).reduce((a, r) => a + r.qty, 0);
-            return { city, units, revenue, channels, topProd, breakdown, restocked };
+            const restocked = restockData.filter(r => r.city === name).reduce((a, r) => a + r.qty, 0);
+            return { branch: name, units, revenue, channels, topProd, breakdown, restocked };
         }).sort((a, b) => b.units - a.units);
 
-        setCityData(data);
+        setBranchData(data);
     }
 
     if (loading) return (
@@ -158,11 +158,11 @@ export default function StockLevels() {
                     📦 Overview
                 </button>
                 <button
-                    className={`stock-tab${activeTab === 'city' ? ' active' : ''}`}
-                    onClick={() => setActiveTab('city')}
-                    id="tab-city"
+                    className={`stock-tab${activeTab === 'branch' ? ' active' : ''}`}
+                    onClick={() => setActiveTab('branch')}
+                    id="tab-branch"
                 >
-                    🏙️ By City
+                    🏙️ By Branch
                 </button>
             </div>
 
@@ -228,22 +228,22 @@ export default function StockLevels() {
                 </div>
             )}
 
-            {/* ── CITY TAB ── */}
-            {activeTab === 'city' && (
-                <div id="stock-tab-city">
+            {/* ── BRANCH TAB ── */}
+            {activeTab === 'branch' && (
+                <div id="stock-tab-branch">
                     {/* Summary Table */}
                     <div className="card" style={{ marginBottom: '14px' }}>
                         <div className="card-title">
-                            Units Sold &amp; Revenue by City
-                            <span style={{ color: 'var(--text3)', fontWeight: 400, fontSize: '12px', marginLeft: '4px' }} id="city-stock-meta">
-                                {cityData.length} cities · {totalUnits} total units sold
+                            Units Sold &amp; Revenue by Branch
+                            <span style={{ color: 'var(--text3)', fontWeight: 400, fontSize: '12px', marginLeft: '4px' }} id="branch-stock-meta">
+                                {branchData.length} branches · {totalUnits} total units sold
                             </span>
                         </div>
                         <div className="tbl-wrap">
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>City</th>
+                                        <th>Branch</th>
                                         <th>Units Sold</th>
                                         <th>Restocked In</th>
                                         <th>Revenue (PKR)</th>
@@ -252,15 +252,15 @@ export default function StockLevels() {
                                         <th>% of Total Sales</th>
                                     </tr>
                                 </thead>
-                                <tbody id="city-summary-tbl">
-                                    {cityData.length === 0 ? (
-                                        <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text3)', padding: '28px' }}>No sales data with city information yet</td></tr>
-                                    ) : cityData.map(d => {
+                                <tbody id="branch-summary-tbl">
+                                    {branchData.length === 0 ? (
+                                        <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text3)', padding: '28px' }}>No sales data with branch information yet</td></tr>
+                                    ) : branchData.map(d => {
                                         const pctUnits = Math.round(d.units / totalUnits * 100);
                                         return (
-                                            <tr key={d.city}>
+                                            <tr key={d.branch}>
                                                 <td style={{ fontWeight: 700 }}>
-                                                    <span style={{ marginRight: '6px' }}>🏙️</span>{d.city}
+                                                    <span style={{ marginRight: '6px' }}>🏙️</span>{d.branch}
                                                 </td>
                                                 <td style={{ fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>{d.units}</td>
                                                 <td style={{ fontFamily: "'DM Mono', monospace", fontWeight: 600, color: 'var(--green)' }}>
@@ -293,18 +293,18 @@ export default function StockLevels() {
                         </div>
                     </div>
 
-                    {/* City Cards Grid */}
+                    {/* Branch Cards Grid */}
                     <div className="card">
-                        <div className="card-title">Product Breakdown by City</div>
-                        <div className="city-stock-grid" id="city-stock-grid">
-                            {cityData.map((d, ci) => {
+                        <div className="card-title">Product Breakdown by Branch</div>
+                        <div className="branch-stock-grid" id="branch-stock-grid">
+                            {branchData.map((d, ci) => {
                                 const color = CITY_COLORS[ci % CITY_COLORS.length];
                                 return (
-                                    <div className="city-stock-card" key={d.city}>
-                                        <div className="city-name">
+                                    <div className="branch-stock-card" key={d.branch}>
+                                        <div className="branch-name">
                                             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }} />
-                                            {d.city}
-                                            <span className="city-total">
+                                            {d.branch}
+                                            <span className="branch-total">
                                                 {d.units} sold{d.restocked ? ` · +${d.restocked} restocked` : ''}
                                             </span>
                                         </div>
@@ -316,18 +316,18 @@ export default function StockLevels() {
                                         {d.breakdown.length === 0 ? (
                                             <div style={{ color: 'var(--text3)', fontSize: '12px' }}>No sales</div>
                                         ) : d.breakdown.map(b => (
-                                            <div className="city-prod-row" key={b.product}>
+                                            <div className="branch-prod-row" key={b.product}>
                                                 <div style={{ width: '3px', height: '14px', borderRadius: '2px', background: color, flexShrink: 0 }} />
-                                                <div className="city-prod-name">{b.product}</div>
-                                                <div className="city-prod-qty">{b.qty}</div>
-                                                <div className="city-prod-rev">{pkr(b.revenue)}</div>
+                                                <div className="branch-prod-name">{b.product}</div>
+                                                <div className="branch-prod-qty">{b.qty}</div>
+                                                <div className="branch-prod-rev">{pkr(b.revenue)}</div>
                                             </div>
                                         ))}
                                     </div>
                                 );
                             })}
-                            {cityData.length === 0 && (
-                                <div style={{ color: 'var(--text3)', fontSize: '13px', padding: '8px' }}>No city data available yet</div>
+                            {branchData.length === 0 && (
+                                <div style={{ color: 'var(--text3)', fontSize: '13px', padding: '8px' }}>No branch data available yet</div>
                             )}
                         </div>
                     </div>

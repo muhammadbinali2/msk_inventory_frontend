@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { getSales, softDeleteSale } from '@/api/sales';
 import { Sale } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 export default function SalesLog() {
     const { user } = useAuth();
@@ -11,6 +12,8 @@ export default function SalesLog() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [pendingDelete, setPendingDelete] = useState<Sale | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     const loadData = async () => {
         try {
@@ -27,16 +30,23 @@ export default function SalesLog() {
         loadData();
     }, []);
 
-    const handleDelete = async (sale: Sale) => {
+    const handleDelete = (sale: Sale) => {
         if (!user) return;
-        if (!confirm(`Delete sale ${sale.ref}?\n${sale.product_name} x ${sale.qty} — PKR ${sale.final_price}\n\nThis cannot be undone.`)) return;
+        setPendingDelete(sale);
+    };
 
+    const confirmDelete = async () => {
+        if (!user || !pendingDelete) return;
+        setDeleting(true);
         try {
-            await softDeleteSale(sale.id!, user.name);
+            await softDeleteSale(pendingDelete.id!, user.name);
             await loadData(); // Reload
+            setPendingDelete(null);
         } catch (e) {
             console.error(e);
             alert('Failed to delete sale');
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -57,7 +67,7 @@ export default function SalesLog() {
 
     // --- Export Logic ---
     const exportCSV = () => {
-        const headers = ["Date", "Ref", "Product", "Qty", "Channel", "Customer", "City", "Total", "Discount", "Final", "Status", "Notes"];
+        const headers = ["Date", "Ref", "Product", "Qty", "Channel", "Customer", "Branch", "Total", "Discount", "Final", "Status", "Notes"];
         const rows = filteredSales.map(s => [
             s.date,
             s.ref,
@@ -150,7 +160,7 @@ export default function SalesLog() {
                                 <th>Qty</th>
                                 <th>Channel</th>
                                 <th>Customer</th>
-                                <th>City</th>
+                                <th>Branch</th>
                                 <th>Total</th>
                                 <th>Discount</th>
                                 <th>Final Price</th>
@@ -186,6 +196,23 @@ export default function SalesLog() {
                     </table>
                 </div>
             </div>
+
+            <ConfirmDialog
+                open={!!pendingDelete}
+                title="Delete sale"
+                message={pendingDelete ? (
+                    <>
+                        You are about to delete sale <strong>{pendingDelete.ref}</strong> for{' '}
+                        <strong>{pendingDelete.product_name}</strong> ({pendingDelete.qty} units,{' '}
+                        PKR {pendingDelete.final_price.toLocaleString()}). This cannot be undone.
+                    </>
+                ) : null}
+                confirmLabel="Delete sale"
+                cancelLabel="Cancel"
+                confirming={deleting}
+                onConfirm={confirmDelete}
+                onCancel={() => !deleting && setPendingDelete(null)}
+            />
         </div>
     );
 }

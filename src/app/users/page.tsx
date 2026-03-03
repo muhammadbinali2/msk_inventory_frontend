@@ -6,6 +6,7 @@ import { getActivityLogs } from '@/api/quotes';
 import { getUsers, createUser, deleteUser, updateUserPassword } from '@/api/users';
 import { ActivityLog, User } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 export default function UserManagement() {
     const { user: currentUser } = useAuth();
@@ -31,6 +32,9 @@ export default function UserManagement() {
     // Change Pass State
     const [editingUserId, setEditingUserId] = useState<string | null>(null);
     const [changePass, setChangePass] = useState('');
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+    const [pendingDeleteName, setPendingDeleteName] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
         if (currentUser && currentUser.role !== 'admin') {
@@ -68,14 +72,24 @@ export default function UserManagement() {
         }
     };
 
-    const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`Are you sure you want to delete ${name}?`)) return;
+    const handleDelete = (id: string, name: string) => {
+        setPendingDeleteId(id);
+        setPendingDeleteName(name);
+    };
+
+    const confirmDelete = async () => {
+        if (!pendingDeleteId) return;
+        setDeleting(true);
         try {
-            await deleteUser(id);
+            await deleteUser(pendingDeleteId);
             const u = await getUsers();
             setUsers(u);
+            setPendingDeleteId(null);
+            setPendingDeleteName(null);
         } catch (e) {
             alert('Failed to delete user');
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -190,6 +204,19 @@ export default function UserManagement() {
                     </div>
                 </div>
             )}
+
+            <ConfirmDialog
+                open={!!pendingDeleteId}
+                title="Delete user profile"
+                message={pendingDeleteName ? (
+                    <>This will permanently remove <strong>{pendingDeleteName}</strong> from the system. This cannot be undone.</>
+                ) : null}
+                confirmLabel="Delete profile"
+                cancelLabel="Cancel"
+                confirming={deleting}
+                onConfirm={confirmDelete}
+                onCancel={() => !deleting && (setPendingDeleteId(null), setPendingDeleteName(null))}
+            />
 
             <div className="card">
                 <div className="card-title">Detailed Activity Audit</div>

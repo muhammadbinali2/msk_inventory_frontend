@@ -11,13 +11,13 @@ export default function RestockPage() {
     const { user } = useAuth();
     const [products, setProducts] = useState<Product[]>([]);
     const [restocks, setRestocks] = useState<Restock[]>([]);
-    const [cities, setCities] = useState<string[]>([]);
+    const [branches, setBranches] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Form State
     const [productName, setProductName] = useState('');
     const [qty, setQty] = useState(10);
-    const [city, setCity] = useState('');
+    const [branch, setBranch] = useState('');
     const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
     const [supplier, setSupplier] = useState('');
     const [notes, setNotes] = useState('');
@@ -28,7 +28,7 @@ export default function RestockPage() {
             const [p, r, configLists] = await Promise.all([getProducts(), getRestocks(), getConfigLists()]);
             setProducts(p);
             setRestocks(r);
-            setCities(configLists.filter(c => c.type === 'city').map(c => c.value));
+            setBranches(configLists.filter(c => c.type === 'city').map(c => c.value));
         } catch (e) {
             console.error(e);
         } finally {
@@ -45,18 +45,18 @@ export default function RestockPage() {
         }
         setSaving(true);
         try {
-            await addRestock({ product_name: productName, qty, city, date, supplier, notes });
+            await addRestock({ product_name: productName, qty, city: branch, date, supplier, notes });
 
             if (user) {
                 await addActivityLog({
                     type: 'add',
                     user_name: user.name,
                     role: user.role,
-                    message: `Restocked <strong>${productName}</strong> +${qty} units${city ? ' → ' + city : ''}`,
+                    message: `Restocked <strong>${productName}</strong> +${qty} units${branch ? ' → ' + branch : ''}`,
                 });
             }
             setQty(10);
-            setCity('');
+            setBranch('');
             setSupplier('');
             setNotes('');
             await loadData();
@@ -97,10 +97,10 @@ export default function RestockPage() {
                             <input type="number" min="1" value={qty} onChange={e => setQty(parseInt(e.target.value) || 1)} />
                         </div>
                         <div className="fg">
-                            <label>Destination City</label>
-                            <select value={city} onChange={e => setCity(e.target.value)}>
-                                <option value="">Select city…</option>
-                                {cities.map(c => <option key={c} value={c}>{c}</option>)}
+                            <label>Destination Branch</label>
+                            <select value={branch} onChange={e => setBranch(e.target.value)}>
+                                <option value="">Select branch…</option>
+                                {branches.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                         </div>
                         <div className="fg">
@@ -132,7 +132,7 @@ export default function RestockPage() {
                                 <tr>
                                     <th>Date</th>
                                     <th>Product</th>
-                                    <th>City</th>
+                                    <th>Branch</th>
                                     <th>Units Added</th>
                                     <th>Supplier</th>
                                     <th>Notes</th>

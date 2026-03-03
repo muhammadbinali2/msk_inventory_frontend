@@ -26,7 +26,7 @@
   --red-bg: rgba(192, 57, 43, 0.10);
   --blue: #2563eb;
   --blue-bg: rgba(37, 99, 235, 0.10);
-  --sidebar-w: 230px;
+  --sidebar-w: 268px;
   --radius: 12px;
 }
 
@@ -414,26 +414,33 @@ body {
   padding: 24px 12px;
   gap: 2px;
   z-index: 100;
+  overflow: hidden;
+}
+
+.s-nav-wrap {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .s-logo {
-  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--gold);
-  padding: 4px 12px 20px;
-  letter-spacing: -.5px;
-  text-shadow: none;
+  /* padding: 2px 6px 8px; */
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 
-.s-logo em {
-  font-style: normal;
-  color: var(--text);
-  font-size: .7em;
+.s-logo-img {
+  width: 100%;
+  max-width: 100px;
+  height: auto;
+  object-fit: contain;
+  display: block;
 }
 
 .s-section {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text3);
   text-transform: uppercase;
@@ -448,7 +455,7 @@ body {
   padding: 9px 12px;
   border-radius: 9px;
   cursor: pointer;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text2);
   transition: all .15s;
@@ -527,13 +534,13 @@ body {
 }
 
 .user-name {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text);
 }
 
 .user-role {
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--text3);
 }
 
@@ -2008,22 +2015,22 @@ tbody td.mono {
   margin-top: 10px;
 }
 
-/* ─── STOCK BY CITY ──────────────────────────────── */
-.city-stock-grid {
+/* ─── STOCK BY BRANCH ─────────────────────────────── */
+.branch-stock-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 14px;
   margin-top: 4px;
 }
 
-.city-stock-card {
+.branch-stock-card {
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 16px 18px;
 }
 
-.city-stock-card .city-name {
+.branch-stock-card .branch-name {
   font-size: 13px;
   font-weight: 700;
   color: var(--text);
@@ -2035,7 +2042,7 @@ tbody td.mono {
   border-bottom: 1px solid var(--border);
 }
 
-.city-stock-card .city-name .city-total {
+.branch-stock-card .branch-name .branch-total {
   margin-left: auto;
   font-family: 'DM Mono', 'Fira Code', 'Courier New', monospace;
   font-size: 11.5px;
@@ -2043,14 +2050,14 @@ tbody td.mono {
   font-weight: 500;
 }
 
-.city-prod-row {
+.branch-prod-row {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
 }
 
-.city-prod-name {
+.branch-prod-name {
   font-size: 12px;
   color: var(--text2);
   flex: 1;
@@ -2059,7 +2066,7 @@ tbody td.mono {
   text-overflow: ellipsis;
 }
 
-.city-prod-qty {
+.branch-prod-qty {
   font-family: 'DM Mono', 'Fira Code', 'Courier New', monospace;
   font-size: 12px;
   font-weight: 600;
@@ -2068,7 +2075,7 @@ tbody td.mono {
   text-align: right;
 }
 
-.city-prod-rev {
+.branch-prod-rev {
   font-family: 'DM Mono', 'Fira Code', 'Courier New', monospace;
   font-size: 11px;
   color: var(--text3);

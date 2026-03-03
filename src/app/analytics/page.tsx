@@ -195,9 +195,9 @@ export default function AnalyticsPage() {
             </div>
 
             <div className="top-grid">
-                {/* Top Cities */}
+                {/* Top Branches */}
                 <div className="card">
-                    <div className="card-title">🏙️ Top Cities</div>
+                    <div className="card-title">🏙️ Top Branches</div>
                     <div className="rank-list">
                         {topCities.map((c, i) => (
                             <div className="rank-item" key={c.name}>

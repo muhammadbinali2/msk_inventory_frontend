@@ -65,7 +65,7 @@ export default function Login() {
 
                 <div className="auth-feats">
                     <div className="auth-feat"><div className="feat-dot"></div><span className="feat-text">Real-time stock tracking across 6 products</span></div>
-                    <div className="auth-feat"><div className="feat-dot"></div><span className="feat-text">Multi-channel &amp; multi-city sales logging</span></div>
+                    <div className="auth-feat"><div className="feat-dot"></div><span className="feat-text">Multi-channel &amp; multi-branch sales logging</span></div>
                     <div className="auth-feat"><div className="feat-dot"></div><span className="feat-text">Automated reorder &amp; low-stock alerts</span></div>
                     <div className="auth-feat"><div className="feat-dot"></div><span className="feat-text">Full configuration — products, channels, cities</span></div>
                 </div>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getProducts, addProduct, updateProduct, deleteProduct, getConfigLists, addConfigList, deleteConfigList } from '@/api/inventory';
 import { Product, ConfigList } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 export default function ConfigPage() {
     const { user } = useAuth();
@@ -21,12 +22,16 @@ export default function ConfigPage() {
 
     // New Config Items
     const [ncChannel, setNcChannel] = useState('');
-    const [ncCity, setNcCity] = useState('');
+    const [ncBranch, setNcBranch] = useState('');
     const [ncPlatform, setNcPlatform] = useState('');
 
     // New Discount
     const [ndLabel, setNdLabel] = useState('');
     const [ndPct, setNdPct] = useState(0);
+
+    const [pendingProduct, setPendingProduct] = useState<{ id: string; name: string } | null>(null);
+    const [pendingConfigId, setPendingConfigId] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
         if (user && user.role !== 'admin') {
@@ -66,12 +71,8 @@ export default function ConfigPage() {
         } catch (e) { console.error(e); alert('Failed to update product'); }
     };
 
-    const handleDeleteProduct = async (id: string, name: string) => {
-        if (!confirm(`Remove product ${name}?`)) return;
-        try {
-            await deleteProduct(id);
-            await loadData();
-        } catch (e) { console.error(e); alert('Failed to delete product'); }
+    const handleDeleteProduct = (id: string, name: string) => {
+        setPendingProduct({ id, name });
     };
 
     // --- Configs ---
@@ -80,24 +81,51 @@ export default function ConfigPage() {
         try {
             await addConfigList({ type, value, pct });
             if (type === 'channel') setNcChannel('');
-            if (type === 'city') setNcCity('');
+            if (type === 'city') setNcBranch('');
             if (type === 'platform') setNcPlatform('');
             if (type === 'discount') { setNdLabel(''); setNdPct(0); }
             await loadData();
         } catch (e) { console.error(e); alert(`Failed to add ${type}`); }
     };
 
-    const handleDeleteConfig = async (id: string) => {
+    const handleDeleteConfig = (id: string) => {
+        setPendingConfigId(id);
+    };
+
+    const confirmDeleteProduct = async () => {
+        if (!pendingProduct) return;
+        setDeleting(true);
         try {
-            await deleteConfigList(id);
+            await deleteProduct(pendingProduct.id);
             await loadData();
-        } catch (e) { console.error(e); alert('Failed to delete item'); }
+            setPendingProduct(null);
+        } catch (e) {
+            console.error(e);
+            alert('Failed to delete product');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    const confirmDeleteConfig = async () => {
+        if (!pendingConfigId) return;
+        setDeleting(true);
+        try {
+            await deleteConfigList(pendingConfigId);
+            await loadData();
+            setPendingConfigId(null);
+        } catch (e) {
+            console.error(e);
+            alert('Failed to delete item');
+        } finally {
+            setDeleting(false);
+        }
     };
 
     if (loading || !user || user.role !== 'admin') return <div className="p-8">Loading configuration...</div>;
 
     const channels = configs.filter(c => c.type === 'channel');
-    const cities = configs.filter(c => c.type === 'city');
+    const branches = configs.filter(c => c.type === 'city');
     const platforms = configs.filter(c => c.type === 'platform');
     const discounts = configs.filter(c => c.type === 'discount').sort((a, b) => (a.pct || 0) - (b.pct || 0));
 
@@ -155,13 +183,13 @@ export default function ConfigPage() {
                     <div className="add-list-item">
                         <input type="text" placeholder="New channel…" value={ncChannel} onChange={e => setNcChannel(e.target.value)} />
                         <button className="btn btn-primary btn-sm" onClick={() => handleAddConfig('channel', ncChannel)}>+ Add</button>
-                    </div>
                 </div>
+            </div>
 
-                <div className="card">
-                    <div className="card-title">🏙️ Cities</div>
+            <div className="card">
+                    <div className="card-title">🏙️ Branches</div>
                     <div className="list-editor">
-                        {cities.map(c => (
+                        {branches.map(c => (
                             <div className="list-item" key={c.id}>
                                 <input type="text" value={c.value} readOnly />
                                 <button className="del" onClick={() => handleDeleteConfig(c.id!)}>✕</button>
@@ -169,8 +197,8 @@ export default function ConfigPage() {
                         ))}
                     </div>
                     <div className="add-list-item">
-                        <input type="text" placeholder="New city…" value={ncCity} onChange={e => setNcCity(e.target.value)} />
-                        <button className="btn btn-primary btn-sm" onClick={() => handleAddConfig('city', ncCity)}>+ Add</button>
+                        <input type="text" placeholder="New branch…" value={ncBranch} onChange={e => setNcBranch(e.target.value)} />
+                        <button className="btn btn-primary btn-sm" onClick={() => handleAddConfig('city', ncBranch)}>+ Add</button>
                     </div>
                 </div>
 
@@ -208,6 +236,30 @@ export default function ConfigPage() {
                     </div>
                 </div>
             </div>
+
+            <ConfirmDialog
+                open={!!pendingProduct}
+                title="Remove product"
+                message={pendingProduct ? (
+                    <>This will remove <strong>{pendingProduct.name}</strong> from the catalog. Existing sales history will remain.</>
+                ) : null}
+                confirmLabel="Remove product"
+                cancelLabel="Cancel"
+                confirming={deleting}
+                onConfirm={confirmDeleteProduct}
+                onCancel={() => !deleting && setPendingProduct(null)}
+            />
+
+            <ConfirmDialog
+                open={!!pendingConfigId}
+                title="Remove configuration value"
+                message="This will remove the selected branch/channel/platform/discount option from future forms. Existing records will not be changed."
+                confirmLabel="Remove"
+                cancelLabel="Cancel"
+                confirming={deleting}
+                onConfirm={confirmDeleteConfig}
+                onCancel={() => !deleting && setPendingConfigId(null)}
+            />
         </div>
     );
 }

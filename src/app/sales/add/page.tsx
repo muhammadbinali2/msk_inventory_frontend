@@ -23,7 +23,7 @@ export default function AddSale() {
     const [qty, setQty] = useState(1);
     const [channel, setChannel] = useState('');
     const [saleType, setSaleType] = useState('Full Price');
-    const [city, setCity] = useState('');
+    const [branch, setBranch] = useState('');
     const [platform, setPlatform] = useState('');
     const [customer, setCustomer] = useState('');
     const [unitPrice, setUnitPrice] = useState(0);
@@ -69,7 +69,7 @@ export default function AddSale() {
     const { discAmt, final } = calcVars();
 
     const handleSave = async () => {
-        if (!productName || !date || !ref || !channel || !city || !platform || !customer || qty < 1) {
+        if (!productName || !date || !ref || !channel || !branch || !platform || !customer || qty < 1) {
             alert('Please fill out all mandatory fields.');
             return;
         }
@@ -87,7 +87,7 @@ export default function AddSale() {
                 qty,
                 channel,
                 sale_type: saleType,
-                city,
+                city: branch,
                 platform,
                 customer,
                 unit_price: unitPrice,
@@ -124,7 +124,7 @@ export default function AddSale() {
     if (loading) return <div className="p-8">Loading form...</div>;
 
     const getChannels = () => configs.filter(c => c.type === 'channel');
-    const getCities = () => configs.filter(c => c.type === 'city');
+    const getBranches = () => configs.filter(c => c.type === 'city');
     const getPlatforms = () => configs.filter(c => c.type === 'platform');
     const getDiscounts = () => configs.filter(c => c.type === 'discount').sort((a, b) => (a.pct || 0) - (b.pct || 0));
 
@@ -142,7 +142,7 @@ export default function AddSale() {
 
                 <div className="form-grid">
                     <div className="fg"><label>Date*</label><input type="date" required value={date} onChange={e => setDate(e.target.value)} /></div>
-                    <div className="fg"><label>Order Reference*</label><input type="text" required placeholder="e.g. ORD-001" value={ref} onChange={e => setRef(e.target.value)} /></div>
+                    <div className="fg"><label>Order Reference</label><input type="text"  placeholder="e.g. ORD-001" value={ref} onChange={e => setRef(e.target.value)} /></div>
                     <div className="fg">
                         <label>Product*</label>
                         <select required value={productName} onChange={handleProductChange}>
@@ -170,10 +170,10 @@ export default function AddSale() {
                     </div>
 
                     <div className="fg">
-                        <label>City*</label>
-                        <select required value={city} onChange={e => setCity(e.target.value)}>
-                            <option value="">Select city…</option>
-                            {getCities().map(c => <option key={c.id} value={c.value}>{c.value}</option>)}
+                        <label>Branch*</label>
+                        <select required value={branch} onChange={e => setBranch(e.target.value)}>
+                            <option value="">Select branch…</option>
+                            {getBranches().map(c => <option key={c.id} value={c.value}>{c.value}</option>)}
                         </select>
                     </div>
 

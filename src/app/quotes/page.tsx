@@ -6,6 +6,7 @@ import { getProducts, getConfigLists } from '@/api/inventory';
 import { addActivityLog } from '@/api/quotes';
 import { Quote, QuoteItem, Product, ConfigList } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 export default function QuotesPage() {
     const { user } = useAuth();
@@ -27,12 +28,15 @@ export default function QuotesPage() {
     const [ref, setRef] = useState('');
     const [client, setClient] = useState('');
     const [contact, setContact] = useState('');
-    const [city, setCity] = useState('');
+    const [branch, setBranch] = useState('');
     const [address, setAddress] = useState('');
     const [discPct, setDiscPct] = useState(0);
     const [status, setStatus] = useState<'Draft' | 'Sent' | 'Accepted' | 'Rejected'>('Draft');
     const [notes, setNotes] = useState('');
     const [items, setItems] = useState<{ id: string, product_name: string, qty: number, unit_price: number }[]>([]);
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+    const [pendingDeleteRef, setPendingDeleteRef] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     const loadData = async () => {
         try {
@@ -57,7 +61,7 @@ export default function QuotesPage() {
         setValidUntil(nextQDate.toISOString().split('T')[0]);
 
         setRef(`QT-${Date.now().toString().slice(-5)}`);
-        setClient(''); setContact(''); setCity(''); setAddress('');
+        setClient(''); setContact(''); setBranch(''); setAddress('');
         setDiscPct(0); setStatus('Draft'); setNotes('');
         setItems([{ id: Math.random().toString(), product_name: '', qty: 1, unit_price: 0 }]);
         setShowBuilder(true);
@@ -108,7 +112,7 @@ export default function QuotesPage() {
             }));
 
             await addQuote({
-                ref, date, valid_until: validUntil, client, contact, address, city,
+                ref, date, valid_until: validUntil, client, contact, address, city: branch,
                 subtotal, disc_pct: discPct, disc_amt: discAmt, total, status, notes,
                 created_by: user ? user.name : 'Unknown'
             }, dbItems);
@@ -142,14 +146,24 @@ export default function QuotesPage() {
         }
     };
 
-    const handleDelete = async (id: string, qRef: string) => {
-        if (!confirm(`Delete quote ${qRef}?`)) return;
+    const handleDelete = (id: string, qRef: string) => {
+        setPendingDeleteId(id);
+        setPendingDeleteRef(qRef);
+    };
+
+    const confirmDelete = async () => {
+        if (!pendingDeleteId) return;
+        setDeleting(true);
         try {
-            await deleteQuote(id);
+            await deleteQuote(pendingDeleteId);
             await loadData();
+            setPendingDeleteId(null);
+            setPendingDeleteRef(null);
         } catch (e) {
             console.error(e);
             alert('Failed to delete quote');
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -187,7 +201,7 @@ export default function QuotesPage() {
             <div class="inv-party-detail">
               ${contact ? `Contact: ${contact}<br>` : ''}
               ${address ? `${address}<br>` : ''}
-              ${city ? city : ''}
+              ${branch ? branch : ''}
             </div>
           </div>
           <div>
@@ -277,7 +291,7 @@ export default function QuotesPage() {
 
     if (loading) return <div className="p-8">Loading quotes...</div>;
 
-    const getCities = () => configs.filter(c => c.type === 'city');
+    const getBranches = () => configs.filter(c => c.type === 'city');
     const getDiscounts = () => configs.filter(c => c.type === 'discount').sort((a, b) => (a.pct || 0) - (b.pct || 0));
 
     const pkr = (v: number) => 'PKR ' + Number(Math.round(v)).toLocaleString();
@@ -320,10 +334,10 @@ export default function QuotesPage() {
                                 <div className="fg"><label>Reseller / Client Name</label><input type="text" placeholder="e.g. Ali Traders" value={client} onChange={e => setClient(e.target.value)} /></div>
                                 <div className="fg"><label>Contact / Phone</label><input type="text" placeholder="e.g. +92 300 1234567" value={contact} onChange={e => setContact(e.target.value)} /></div>
                                 <div className="fg">
-                                    <label>City</label>
-                                    <select value={city} onChange={e => setCity(e.target.value)}>
-                                        <option value="">Select city…</option>
-                                        {getCities().map(c => <option key={c.id} value={c.value}>{c.value}</option>)}
+                                    <label>Branch</label>
+                                    <select value={branch} onChange={e => setBranch(e.target.value)}>
+                                        <option value="">Select branch…</option>
+                                        {getBranches().map(c => <option key={c.id} value={c.value}>{c.value}</option>)}
                                     </select>
                                 </div>
                                 <div className="fg" style={{ gridColumn: '1/-1' }}><label>Reseller Address (optional)</label><input type="text" placeholder="Shop/street address…" value={address} onChange={e => setAddress(e.target.value)} /></div>
@@ -410,7 +424,7 @@ export default function QuotesPage() {
                 <div className="tbl-wrap">
                     <table>
                         <thead><tr>
-                            <th>Date</th><th>Quote #</th><th>Client</th><th>City</th>
+                            <th>Date</th><th>Quote #</th><th>Client</th><th>Branch</th>
                             <th>Items</th><th>Subtotal</th><th>Discount</th><th>Total</th>
                             <th>Status</th><th>Created By</th><th>Actions</th>
                         </tr></thead>
@@ -446,6 +460,19 @@ export default function QuotesPage() {
                     </table>
                 </div>
             </div>
+
+            <ConfirmDialog
+                open={!!pendingDeleteId}
+                title="Delete quote"
+                message={pendingDeleteRef ? (
+                    <>You are about to permanently delete quote <strong>{pendingDeleteRef}</strong>. This cannot be undone.</>
+                ) : null}
+                confirmLabel="Delete quote"
+                cancelLabel="Cancel"
+                confirming={deleting}
+                onConfirm={confirmDelete}
+                onCancel={() => !deleting && (setPendingDeleteId(null), setPendingDeleteRef(null))}
+            />
 
             {printOverlay && (
                 <div id="pdf-overlay" className="show">
